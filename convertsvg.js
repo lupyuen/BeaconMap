@@ -4,8 +4,6 @@ const fs = require('fs');
 const url = require('url');
 const he = require('he');
 
-const svg = fs.readFileSync(__dirname + '/Sample Map.svg');
-
 const svgBoundingBox = require('svg-path-bounding-box');
 function processJSON(json, bounds_by_url) {
     /*  Look for all name="a"
@@ -78,6 +76,10 @@ function processJSON(json, bounds_by_url) {
     return child_boxes
 }
 
+const basename = 'Sample Map';
+//const basename = 'Multiple Markers';
+const svg = fs.readFileSync(`${__dirname}/${basename}.svg`);
+
 const svgson = require('svgson');
 svgson(svg, {
     //svgo: true,
@@ -88,13 +90,31 @@ svgson(svg, {
     //}
 }, json => {
     //console.log(result);
-    fs.writeFileSync('Sample Map.json', JSON.stringify(json, null, 2));
+    fs.writeFileSync(`${basename}.json`, JSON.stringify(json, null, 2));
     let bounds_by_url = {};
     processJSON(json, bounds_by_url);
-    //  A=350, 413
-    //  B=452, 167
-    //  C=780, 215
+    //  Expected:
+    //  A = 350, 413
+    //  B = 452, 167
+    //  C = 780, 215
+    //  Actual:
+    //  A = minX: 334, maxX: 468, minY: 394, maxY: 430
+    //  B = minX: 445, maxX: 518, minY: 158, maxY: 173
+    //  C = minX: 774, maxX: 846, minY: 207, maxY: 222
+    const adjustX = (350 + 452 + 780 - 334 - 445 - 774) / 3;
+    const adjustY = (413 + 167 + 215 - 394 - 158 - 207) / 3;
+    //  Process each marker by URL and location.
+    for (const url_str in bounds_by_url) {
+        //  Ignore the "all|https://..."
+        if (url_str.indexOf('http') !== 0) continue;
+        const bounds = bounds_by_url[url_str];
+        const markerX = bounds.minX + adjustX;
+        const markerY = bounds.minY + adjustY;
+        //  TODO: Process marker.
+        console.log({url_str, markerX, markerY});
+    }
     console.log('JSON file written');
+    process.exit(0);
 });
 
 // From svg String
