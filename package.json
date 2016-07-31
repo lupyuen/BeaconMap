@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "google-auth-wrapper": "^0.5.0",
+    "google-drive-wrapper": "^0.6.0",
     "he": "^1.1.0",
     "svg-path-bounding-box": "^1.0.4",
     "svgson": "^2.0.3"
