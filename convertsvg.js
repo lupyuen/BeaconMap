@@ -32,10 +32,26 @@ function processJSON(json) {
         //  Compute bounding boxes only for name="a"
         if (!json.name || json.name !== 'a') continue;
         if (!child.attrs.d) continue;
-        const bounding_box = svgBoundingBox(child.attrs.d);
+        //  bounding_box contains minX, maxX, minY, maxY
+        let bounding_box = svgBoundingBox(child.attrs.d);
+        bounding_box = JSON.parse(JSON.stringify(bounding_box));
+        bounding_box.url = json.attrs.xlinkHref;
         child_bounding_boxes.push(bounding_box);
     }
-    //  TODO: Process child bound boxes.
+    //  Process child bound boxes.
+    if (child_bounding_boxes.length === 0) return null;
+    //  Compute the min-max of X and Y.
+    const bounds = JSON.parse(JSON.stringify(child_bounding_boxes[0]));
+    for (const bounding_box2 of child_bounding_boxes) {
+        if (bounding_box2.minX < bounds.minX) bounds.minX = bounding_box2.minX;
+        if (bounding_box2.minY < bounds.minY) bounds.minY = bounding_box2.minY;
+        if (bounding_box2.maxX > bounds.maxX) bounds.maxX = bounding_box2.maxX;
+        if (bounding_box2.maxY > bounds.maxY) bounds.maxY = bounding_box2.maxY;
+    }
+    //  Pointer is located at minX and midY.
+    const pointerX = bounds.minX;  // + ?
+    const pointerY = bounds.minY;  // + ?
+    //  TODO: Remember this URL and pointer location.
     return child_bounding_boxes
 }
 
