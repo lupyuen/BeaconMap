@@ -9,6 +9,7 @@
     "node-window": "^1.0.1",
     "snapsvg": "^0.4.0",
     "snapsvg-cjs": "0.0.3",
+    "svg-path-bounding-box": "^1.0.4",
     "svg.js": "^2.3.2",
     "svgson": "^2.0.3",
     "svgutils": "^0.13.6"

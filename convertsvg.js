@@ -3,6 +3,42 @@
 const fs = require('fs');
 const svg = fs.readFileSync(__dirname + '/Sample Map.svg');
 
+const svgBoundingBox = require('svg-path-bounding-box');
+function processJSON(json) {
+    /*  Look for all name="a"
+     {
+     "name": "a",
+     "attrs": {
+         "xlinkHref": "https://www.google.com/url?q=http://bootha&amp;sa=D&amp;ust=1469929609836000&amp;usg=AFQjCNFz4YOg9Vl0C1P8SIEXdxZVp5xzXw",
+         "target": "_blank",
+         "rel": "noreferrer"
+     },
+     "childs": [
+     {
+         "name": "path",
+         "attrs": {
+         "fill": "transparent",
+         "fillOpacity": "0",
+         "d": "m349.30185 392.23096l133.79526 0l0 35.748047l-133.79526 0z",
+         "fillRule": "nonzero"
+     */
+    if (!json.childs || json.childs.length === 0) return;
+    let child_bounding_boxes = [];
+    for (const child of json.childs) {
+        if (child.childs) {
+            processJSON(child);
+            continue;
+        }
+        //  Compute bounding boxes only for name="a"
+        if (!json.name || json.name !== 'a') continue;
+        if (!child.d) continue;
+        const bounding_box = svgBoundingBox(child.d);
+        child_bounding_boxes.push(bounding_box);
+    }
+    //  TODO: Process child bound boxes.
+    return child_bounding_boxes
+}
+
 const svgson = require('svgson');
 svgson(svg, {
     //svgo: true,
@@ -11,9 +47,10 @@ svgson(svg, {
     //customAttrs: {
         //foo: true
     //}
-}, (result) => {
+}, json => {
     //console.log(result);
-    fs.writeFileSync('Sample Map.json', JSON.stringify(result, null, 2));
+    fs.writeFileSync('Sample Map.json', JSON.stringify(json, null, 2));
+    processJSON(json);
     console.log('JSON file written');
 });
 
