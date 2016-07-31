@@ -7,35 +7,12 @@ const googleAuth = require('google-auth-wrapper');
 const googleDrive = google.drive('v3');
 const GDriveWrapper = require('google-drive-wrapper');
 
-
-//  Lists the names and IDs of up to 10 files.
-//  @param {google.auth.OAuth2} auth An authorized OAuth2 client.
-function listFiles(auth, google, callback) {
-    googleDrive.files.list({
-        auth: auth,
-        pageSize: 10,
-        fields: "nextPageToken, files(id, name)"
-    }, function(err, response) {
-        if (err) {
-            console.log('The API returned an error: ' + err);
-            return callback(err);
-        }
-        var files = response.files;
-        if (files.length == 0) {
-            console.log('No files found.');
-        } else {
-            console.log('Files:');
-            for (var i = 0; i < files.length; i++) {
-                var file = files[i];
-                console.log('%s (%s)', file.name, file.id);
-            }
-        }
-        return callback(null)
-    });
-}
-
 const key = require('../SEED01-service1.json');
-const scopes = ['https://www.googleapis.com/auth/drive.metadata.readonly'];
+const scopes = [
+    'https://www.googleapis.com/auth/drive',
+    //'https://www.googleapis.com/auth/drive.file',
+    //'https://www.googleapis.com/auth/drive.metadata.readonly'
+];
 const jwtClient = new google.auth.JWT(key.client_email, null, key.private_key, scopes, null);
 
 function listFiles(callback) {
@@ -63,7 +40,7 @@ function listFiles(callback) {
 
 function downloadFile(fileId, mimeType, dest_filename, callback) {
     const dest = fs.createWriteStream(dest_filename);
-    googleDrive.files.export({fileId, mimeType})
+    googleDrive.files.export({ auth: jwtClient, fileId, mimeType })
         .on('end', function() {
             console.log('Done');
             return callback(null);
@@ -96,5 +73,31 @@ listFiles((err, file) => {
     });
 });
 
+/*
+function authorize(callback) {
+    googleAuth.authorize('../', 'SEED01-beaconmap1',
+        ['https://www.googleapis.com/auth/drive'],
+        (url, provideCode) => {
+            console.log(`Please visit this url, authorize the app and return the code provided\n\n${url}`);
 
+            //provideCode(`4/usyGbYvpbVi6C-I6TQHFgIBDCib1rT4TXtAOWRIIUnc`, ()=>{}); ////
 
+            var read = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+            read.question('What was the code:?', code => {
+                read.close();
+                provideCode(code, err => {
+                    if (err !== undefined) console.log('err:' + err);
+                    return callback(err);
+                });
+            });
+        });
+}
+
+function execute(callback) {
+    googleAuth.execute('../', 'SEED01-beaconmap1', (auth, google) => {
+    });
+}
+*/
