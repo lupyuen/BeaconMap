@@ -31,8 +31,8 @@ function processJSON(json) {
         }
         //  Compute bounding boxes only for name="a"
         if (!json.name || json.name !== 'a') continue;
-        if (!child.d) continue;
-        const bounding_box = svgBoundingBox(child.d);
+        if (!child.attrs.d) continue;
+        const bounding_box = svgBoundingBox(child.attrs.d);
         child_bounding_boxes.push(bounding_box);
     }
     //  TODO: Process child bound boxes.
