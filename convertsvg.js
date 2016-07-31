@@ -1,10 +1,13 @@
 'use strict';
 
 const fs = require('fs');
+const url = require('url');
+const he = require('he');
+
 const svg = fs.readFileSync(__dirname + '/Sample Map.svg');
 
 const svgBoundingBox = require('svg-path-bounding-box');
-function processJSON(json) {
+function processJSON(json, bounds_by_url) {
     /*  Look for all name="a"
      {
      "name": "a",
@@ -23,10 +26,10 @@ function processJSON(json) {
          "fillRule": "nonzero"
      */
     if (!json.childs || json.childs.length === 0) return;
-    let child_bounding_boxes = [];
+    let child_boxes = [];
     for (const child of json.childs) {
         if (child.childs) {
-            processJSON(child);
+            processJSON(child, bounds_by_url);
             continue;
         }
         //  Compute bounding boxes only for name="a"
@@ -36,23 +39,43 @@ function processJSON(json) {
         let bounding_box = svgBoundingBox(child.attrs.d);
         bounding_box = JSON.parse(JSON.stringify(bounding_box));
         bounding_box.url = json.attrs.xlinkHref;
-        child_bounding_boxes.push(bounding_box);
+        child_boxes.push(bounding_box);
     }
     //  Process child bound boxes.
-    if (child_bounding_boxes.length === 0) return null;
+    if (child_boxes.length === 0) return null;
+    if (child_boxes > 1) throw new Error('more_than_one_svg_link');
+    //  Decode the URL: https://www.google.com/url?q=http://bootha&amp;sa=D&amp;ust=1469929609836000&amp;usg=AFQjCNFz4YOg9Vl0C1P8SIEXdxZVp5xzXw
+    //  should be http://bootha
+    const url_str = child_boxes[0].url;
+    if (!url_str) throw new Error('missing_svg_url');
+    const decoded_url = he.decode(url_str);
+    const parsed_url = url.parse(decoded_url, true);
+    let normalised_url = decoded_url;
+    if (parsed_url.host.indexOf('google') >= 0 &&
+        parsed_url.query && parsed_url.query.q)
+        normalised_url = parsed_url.query.q;
+
+    //  Get the bounds for the URL and compare.
+    const bounds = bounds_by_url[normalised_url];
     //  Compute the min-max of X and Y.
-    const bounds = JSON.parse(JSON.stringify(child_bounding_boxes[0]));
-    for (const bounding_box2 of child_bounding_boxes) {
-        if (bounding_box2.minX < bounds.minX) bounds.minX = bounding_box2.minX;
-        if (bounding_box2.minY < bounds.minY) bounds.minY = bounding_box2.minY;
-        if (bounding_box2.maxX > bounds.maxX) bounds.maxX = bounding_box2.maxX;
-        if (bounding_box2.maxY > bounds.maxY) bounds.maxY = bounding_box2.maxY;
+    if (!bounds) {
+        bounds_by_url[normalised_url] = {
+            url: normalised_url,
+            minX: child_boxes[0].minX,
+            minY: child_boxes[0].minY,
+            maxX: child_boxes[0].maxX,
+            maxY: child_boxes[0].maxY,
+        };
+        bounds_by_url[`all|${normalised_url}`] = [child_boxes[0]];
     }
-    //  Pointer is located at minX and midY.
-    const pointerX = bounds.minX;  // + ?
-    const pointerY = bounds.minY;  // + ?
-    //  TODO: Remember this URL and pointer location.
-    return child_bounding_boxes
+    else {
+        if (child_boxes[0].minX < bounds.minX) bounds.minX = child_boxes[0].minX;
+        if (child_boxes[0].minY < bounds.minY) bounds.minY = child_boxes[0].minY;
+        if (child_boxes[0].maxX > bounds.maxX) bounds.maxX = child_boxes[0].maxX;
+        if (child_boxes[0].maxY > bounds.maxY) bounds.maxY = child_boxes[0].maxY;
+        bounds_by_url[`all|${normalised_url}`].push(child_boxes[0]);
+    }
+    return child_boxes
 }
 
 const svgson = require('svgson');
@@ -66,7 +89,11 @@ svgson(svg, {
 }, json => {
     //console.log(result);
     fs.writeFileSync('Sample Map.json', JSON.stringify(json, null, 2));
-    processJSON(json);
+    let bounds_by_url = {};
+    processJSON(json, bounds_by_url);
+    //  A=350, 413
+    //  B=452, 167
+    //  C=780, 215
     console.log('JSON file written');
 });
 
