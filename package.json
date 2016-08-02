@@ -8,6 +8,7 @@
     "google-drive-wrapper": "^0.6.0",
     "googleapis": "^12.0.0",
     "he": "^1.1.0",
+    "pdf2json": "^1.1.6",
     "svg-path-bounding-box": "^1.0.4",
     "svgson": "^2.0.3"
   },
